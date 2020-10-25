@@ -1,0 +1,21 @@
+CHIP mytest {
+	IN
+		x[16], y[16],  // 16-bit inputs        
+        zx, // zero the x input?
+        nx, // negate the x input?
+        zy, // zero the y input?
+        ny; // negate the y input?
+
+	OUT
+		m1[16], m2[16];
+
+	PARTS:
+		Mux16(a=x, b=false, sel=zx, out=j1);
+	   Mux16(a=y, b=false, sel=zy, out=j2);
+	   DMux16(in=j1, sel=nx, a=k12, b=k11);
+	   Not16(in=k12, out=k12not);
+	   Mux16(a=k11, b=k12not, sel=nx, out=m1);
+	   DMux16(in=j2, sel=ny, a=k21, b=k22);
+	   Not16(in=k22, out=k22not);
+	   Mux16(a=k21, b=k22not, sel=ny, out=m2);
+}

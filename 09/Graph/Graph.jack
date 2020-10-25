@@ -1,0 +1,54 @@
+class Graph {
+	field Array yValues;
+
+	constructor Graph new() {
+		let yValues = Array.new(512);
+
+		do Graph.calculateSquares();
+
+		do Graph.plotXaxis();
+		do Graph.plotYaxis();
+
+		//do Graph.plotPoints();
+
+		return this;
+	}
+
+	function void calculateSquares() {
+		var int counter;
+		let counter = 0;
+
+		while (counter < 5) {
+			let yValues[counter] = 5;
+			let counter = counter + 1;
+		}
+
+		return;
+	}
+
+	function void plotXaxis () {
+		do Screen.setColor(true);
+		do Screen.drawLine(0, 127, 511, 127);
+		return;
+	}
+
+	function void plotYaxis () {
+		do Screen.setColor(true);
+		do Screen.drawLine(255, 0, 255, 255);
+		return;
+	}
+
+	/*function void plotPoints () {
+		var int counter;
+		let counter = 0;
+
+		do Screen.setColor(true);
+
+		while (counter < 511) {
+			//do Screen.drawPixel(counter, yValues[counter]);
+			let counter = counter + 1;
+		}
+
+		return;
+	}*/
+}

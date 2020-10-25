@@ -1,0 +1,9 @@
+class Main {
+	function void main() {
+		var Graph mygraph;
+
+		let mygraph = Graph.new();
+
+		return;
+	}
+}
