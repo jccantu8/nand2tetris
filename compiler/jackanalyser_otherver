@@ -1,0 +1,263 @@
+import re
+import os.path
+
+class JackTokenizer(object):
+    
+    def __init__(self, inputFilename = None, isDirectory = False, source = None):
+        self._isDirectory = isDirectory
+        
+        self.KEYWORDS = [
+            'class',
+            'constructor',
+            'function',
+            'method',
+            'field',
+            'static',
+            'var',
+            'int',
+            'char',
+            'boolean',
+            'void',
+            'true',
+            'false',
+            'null',
+            'this',
+            'let',
+            'do',
+            'if',
+            'else',
+            'while',
+            'return',
+        ]
+        
+        self.SYMBOLS = [
+            '{',
+            '}',
+            '(',
+            ')',
+            '[',
+            ']',
+            '.',
+            ',',
+            ';',
+            '+',
+            '-',
+            '*',
+            '/',
+            '&',
+            '|',
+            '<',
+            '>',
+            '=',
+            '~',
+        ]
+        
+        self._SPECIALSYMBOLS = {
+            '<' : '&lt;',
+            '>' : '&gt;',
+            '"' : '&quot;',
+            '&' : '&amp',
+        }
+        
+        self._stripFile(inputFilename, source)
+        self._tokenizeFile(inputFilename, source)
+        
+        
+    # Private methods
+    
+    def _writeString(self, f, token):
+        token = re.sub("[\'\"]", "", token)
+        f.write(f'<stringConstant> {token} </stringConstant>\n')
+    
+    def _writeInteger(self, f, token):
+        f.write(f'<integerConstant> {token} </integerConstant>\n')
+    
+    def _writeIdentifier(self, f, token):
+        f.write(f'<identifier> {token} </identifier>\n')
+    
+    def _writeKeyword(self, f, token):
+        f.write(f'<keyword> {token} </keyword>\n')
+    
+    def _writeSymbol(self, f, token):
+        if token in self._SPECIALSYMBOLS.keys():
+            token = self._SPECIALSYMBOLS[token]
+            
+        f.write(f'<symbol> {token} </symbol>\n')
+    
+    def _tokenizeFile(self, inputFilename, source):
+        with open(os.path.abspath(f'./{source}/stripped_{inputFilename}'), 'r') as data:
+            if self._isDirectory:
+                with open(f'./{source}/tokenized_{inputFilename}', 'w') as f:
+                    
+                    f.write("<tokens>\n")
+                    
+                    for line in data:
+                        
+                        token = ''
+                        
+                        stringFlag = False
+                        intFlag = False
+                        identifierFlag = False
+                        newTokenFlag = True
+                        varFlag = False
+                        
+                        for ch in line:
+                            if ch == ' ' and newTokenFlag:
+                                continue
+                            elif ch == '"' and not stringFlag:                              
+                                if identifierFlag:
+                                    identifierFlag = False
+                                    self._writeIdentifier(f, token)
+                                    token=''
+                                    newTokenFlag = True
+                                    
+                                stringFlag = True
+                                newTokenFlag = False
+                                token += ch
+                                continue
+                                
+                            elif ch.isdigit() and not intFlag:
+                                if newTokenFlag: #Start of an int
+                                    intFlag = True
+                                    newTokenFlag = False
+                                    token += ch
+                                    continue
+                                elif identifierFlag:
+                                    #identifierFlag = False
+                                    #self._writeIdentifier(f, token)
+                                    #token=''
+                                    #newTokenFlag = True    
+                                    token += ch
+                                    continue                            
+                                
+                                
+                            if ch in self.SYMBOLS and not intFlag:
+                                if identifierFlag:
+                                    identifierFlag = False
+                                    self._writeIdentifier(f, token)
+                                        
+                                self._writeSymbol(f, ch)
+                                token = ''
+                                newTokenFlag = True
+                            elif ch == '"' and stringFlag:
+                                token += ch
+                                stringFlag = False
+                                self._writeString(f, token)
+                                identifierFlag = False
+                                token = ''
+                                newTokenFlag = True
+                            elif intFlag: #Only if token is an int
+                                if not ch.isdigit():
+                                    intFlag = False
+                                    self._writeInteger(f, token)
+                                    if ch in self.SYMBOLS:
+                                        self._writeSymbol(f, ch)
+                                        token = ''
+                                        newTokenFlag = True
+                                        continue
+                                    else:
+                                        identifierFlag = False
+                                        token = ''
+                                        token += ch
+                                else:
+                                    token += ch
+                                    newTokenFlag = False
+                            else:
+                                token += ch
+                                
+                                if token in self.KEYWORDS:
+                                    if token == 'var':
+                                        varFlag = True
+                                    self._writeKeyword(f, token)
+                                    token = ''
+                                    newTokenFlag = True
+                                    identifierFlag = False
+                                else:
+                                    if identifierFlag:
+                                        if re.search('\s$', token) and varFlag:
+                                            varFlag = False
+                                            token = re.sub("\s+", "", token)
+                                            f.write(f'<identifier> {token} </identifier>\n')
+                                            identifierFlag = False
+                                            token = ''
+                                            newTokenFlag = True
+                                            continue
+                                    identifierFlag = True
+                                    newTokenFlag = False
+                                    
+                                    
+                    f.write("</tokens>")        
+                
+            else: # Source is a single .jack file then
+                with open(os.path.abspath(f'./stripped_{inputFilename}'), 'r') as data:
+                    with open(f'tokenized_{inputFilename}', 'w') as f:
+                        pass
+        
+    def _stripFile(self, inputFilename, source):
+        if self._isDirectory:
+            with open(os.path.abspath(f'./{source}/{inputFilename}'), 'r') as data:
+                f = open(f'./{source}/stripped_{inputFilename}', 'w')
+                
+                self._removeComments(data, f)
+
+                f.close()
+        else: # Source is a single .jack file then
+            with open(os.path.abspath(f'./{inputFilename}'), 'r') as data:
+        
+                f = open(f'stripped_{inputFilename}', 'w')
+                
+                self._removeComments(data, f)
+
+                f.close()
+        
+        return f
+    
+    def _removeComments(self, data, f):
+        isMultilineComment = False
+                
+        for line in data:
+            line = re.sub("\/\/.*", "", line)
+            line = self._removeWhitespace(line)
+                        
+            if isMultilineComment:
+                # Check if line contains the end of a multiline comment i.e., */
+                if re.search('\*\/', line):
+                    isMultilineComment = False
+                            
+                    line = re.sub(".*\*\/", "", line)
+                        
+                else:
+                    continue
+                        
+            # Check if line is a one line comment of the form '/* ..... */'
+            elif re.search('\/\*.*\*\/', line):
+                line = re.sub("\/\*.*\*\/", "", line)                   
+                    
+            # Check if line contains the start of a multiline comment i.e., /*
+            elif re.search('\/\*', line):
+                isMultilineComment = True
+                line = re.sub("\/\*.*", "", line)
+
+                        
+            if line:
+                f.write(line)
+                
+    def _removeWhitespace(self, line):
+        line = line.strip()
+        if re.search("\".*\"", line):
+            line = re.sub('\s+(?=([^"]*"[^"]*")*[^"]*$)', "", line)
+            return line
+        elif re.search("\'.*\'", line):
+            line = re.sub("\s+(?=([^']*'[^']*')*[^']*$)", "", line)
+            return line
+        elif re.search('var', line):
+            lineList = re.split('\s+', line)
+            for i in range(len(lineList)):
+                if lineList[i] == 'var':
+                    lineList[i+1] += ' '
+            line = ''.join(lineList)
+            return line
+        else:
+            line = re.sub("\s", "", line)
+            return line
+        
