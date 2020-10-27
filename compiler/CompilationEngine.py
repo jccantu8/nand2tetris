@@ -1,3 +1,5 @@
+from compiler.SymbolTable import SymbolTable
+from compiler.VMWriter import VMWriter
 import re
 import os.path
 
@@ -8,6 +10,10 @@ class CompilationEngine(object):
 		self.tokenizedInput = tokenizedInput
 		
 		self.inputFilename = self._removeJackExtension(inputFilename)
+		
+		self.classSymbolTable = SymbolTable()
+		self.subroutineSymbolTable = SymbolTable()
+		self.VMWriter = VMWriter()
 		
 		self.position = 0
 		
@@ -21,11 +27,11 @@ class CompilationEngine(object):
 		
 	def compileFile(self, source, inputFilename):
 		if self._isDirectory:
-			with open(f'./{source}/{self.inputFilename}.xml', 'w') as f:
+			with open(f'./{source}/{self.inputFilename}.vm', 'w') as f:
 				self.compileClass(f)
 					
 		else: # Source is a single .jack file then
-			with open(f'{self.inputFilename}.xml', 'w') as f:
+			with open(f'{self.inputFilename}.vm', 'w') as f:
 				self.compileClass(f)
 	
 	def advancePosition(self):
@@ -66,19 +72,37 @@ class CompilationEngine(object):
 		if self.getToken() in ['static', 'field']:
 			f.write(f'<classVarDec>\n')
 			
+			kind = self.getToken().upper()
+			
 			self._writeKeyword(f) #Should be 'static or field'
 			self.advancePosition()
 			
+			type = ''
+			
 			if self.getToken() in ['int', 'char', 'boolean']: #Handle Type
+				
+				type += self.getToken()
+				
 				self._writeKeyword(f) #Should be 'int', 'char', 'boolean'
 				self.advancePosition()
 			else:
+				
+				type += self.getToken()
+				
 				self._writeIdentifier(f) #Should be className
 				self.advancePosition()
 				
+			name = ''
+				
 			if self.getTokenType() == 'identifier': #Should be varName
+				
+				name += self.getToken()
+				
 				self._writeIdentifier(f)
 				self.advancePosition()
+				
+			self.classSymbolTable.define(name, type, kind)
+			f.write(f'*******{name}: {type}, {kind}*****************')
 				
 			while self.getToken() != ';': #Handle more varNames
 				if self.getToken() == ',': #Should be ',
@@ -86,6 +110,11 @@ class CompilationEngine(object):
 					self.advancePosition()
 				
 				if self.getTokenType() == 'identifier': #Should be varName
+					
+					name = self.getToken()
+					self.subroutineSymbolTable.define(name, type, kind)
+					f.write(f'*******{name}: {type}, {kind}*****************')
+					
 					self._writeIdentifier(f)
 					self.advancePosition()
 			
@@ -161,16 +190,32 @@ class CompilationEngine(object):
 		if self.getToken() != ')':
 			f.write(f'<parameterList>\n')
 			
+			kind = 'ARG'
+			type = ''
+			
 			if self.getToken() in ['int', 'char', 'boolean']: #Handle Type
+				
+				type += self.getToken()
+				
 				self._writeKeyword(f) #Should be 'int', 'char', 'boolean'
 				self.advancePosition()
 				temp = True
 			else:
+				
+				type += self.getToken()
+				
 				self._writeIdentifier(f) #Should be className
 				self.advancePosition()
 				temp = False
+				
+			name = ''
 			
 			if self.getTokenType() == 'identifier': #Should be varName
+				
+				name += self.getToken()
+				self.subroutineSymbolTable.define(name, type, kind)
+				f.write(f'*******{name}: {type}, {kind}*****************')
+				
 				self._writeIdentifier(f)
 				self.advancePosition()
 					
@@ -178,15 +223,30 @@ class CompilationEngine(object):
 					if self.getToken() == ',': #Should be ',
 						self._writeSymbol(f)
 						self.advancePosition()
+						
+					type = ''
 							
 					if self.getToken() in ['int', 'char', 'boolean']: #Handle Type
+						
+						type += self.getToken()
+						
 						self._writeKeyword(f) #Should be 'int', 'char', 'boolean'
 						self.advancePosition()
 					else:
+						
+						type += self.getToken()
+						
 						self._writeIdentifier(f) #Should be className
 						self.advancePosition()
+						
+					name = ''
 							
 					if self.getTokenType() == 'identifier': #Should be varName
+						
+						name += self.getToken()
+						self.subroutineSymbolTable.define(name, type, kind)
+						f.write(f'*******{name}: {type}, {kind}*****************')
+						
 						self._writeIdentifier(f)
 						self.advancePosition()
 		
@@ -201,19 +261,37 @@ class CompilationEngine(object):
 		if self.getToken() == 'var':
 			f.write(f'<varDec>\n')
 			
+			kind = 'VAR'
+			
 			self._writeKeyword(f) #Should be 'var'
 			self.advancePosition()
 			
+			type = ''
+			
 			if self.getToken() in ['int', 'char', 'boolean']: #Handle Type
+				
+				type += self.getToken()
+				
 				self._writeKeyword(f) #Should be 'int', 'char', 'boolean'
 				self.advancePosition()
 			else:
+				
+				type += self.getToken()
+				
 				self._writeIdentifier(f) #Should be className
 				self.advancePosition()
 				
+			name = ''	
+			
 			if self.getTokenType() == 'identifier': #Should be varName
+				
+				name += self.getToken()
+				
 				self._writeIdentifier(f)
 				self.advancePosition()
+				
+			self.subroutineSymbolTable.define(name, type, kind)
+			f.write(f'*******{name}: {type}, {kind}*****************')
 				
 			while self.getToken() != ';': #Handle more varNames
 				if self.getToken() == ',': #Should be ',
@@ -221,6 +299,11 @@ class CompilationEngine(object):
 					self.advancePosition()
 				
 				if self.getTokenType() == 'identifier': #Should be varName
+					
+					name = self.getToken()
+					self.subroutineSymbolTable.define(name, type, kind)
+					f.write(f'*******{name}: {type}, {kind}*****************')
+					
 					self._writeIdentifier(f)
 					self.advancePosition()
 			
@@ -559,3 +642,14 @@ class CompilationEngine(object):
 		
 	def _removeJackExtension(self, filename):
 		return re.sub(".jack", "", filename)
+	
+	
+	
+	
+	
+	
+	
+	
+	def symbolTableLookup(self):
+		# first check class table then subroutine
+		pass
