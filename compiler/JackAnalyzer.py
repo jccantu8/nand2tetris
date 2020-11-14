@@ -25,4 +25,4 @@ def singleFileOrDirectory(source):
 				files.append(file)
 			
 if __name__ == "__main__":
-	main('Square')
+	main('Pong')

@@ -10,11 +10,18 @@ class SymbolTable(object):
 			'VAR': 0 #local vars
 		}
 	
-	#***** classVarDec is where static and field is defined. varDec is where var (local) is defined, and parameterList is where argument is defined .... i think
+	#***** If identifier is not found in symbolTable, assume its class or subroutine name
 	#***** expression is where identifiers are being used
 	
 	def startSubroutine(self):
 		self.table = {}
+		
+		self.varCounts = {
+			'FIELD': 0,
+			'STATIC': 0,
+			'ARG': 0,
+			'VAR': 0
+		}
 	
 	def define(self, name, type, kind):
 		#kind should be passed as STATIC, FIELD, ARG, or VAR

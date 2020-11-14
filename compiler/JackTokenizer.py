@@ -137,7 +137,7 @@ class JackTokenizer(object):
 					token += ch
 					continue
 								
-				if ch in self.SYMBOLS:
+				if ch in self.SYMBOLS and not stringFlag:
 					if identifierFlag:
 						identifierFlag = False
 						self._writeIdentifier(f, token)
